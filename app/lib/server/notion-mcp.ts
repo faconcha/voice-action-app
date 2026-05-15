@@ -140,7 +140,10 @@ function noteToMarkdown(note: {
     .join("\n");
 }
 
-async function withMcpClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+async function withMcpClient<T>(
+  accessToken: string,
+  fn: (client: Client) => Promise<T>,
+): Promise<T> {
   const config = getNotionMcpConfig();
   const client = new Client({
     name: "voice-action-app",
@@ -149,7 +152,8 @@ async function withMcpClient<T>(fn: (client: Client) => Promise<T>): Promise<T> 
   const transport = new StreamableHTTPClientTransport(new URL(config.url), {
     requestInit: {
       headers: {
-        Authorization: `Bearer ${config.accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": "VoiceActionApp-MCP-Client/0.1",
       },
     },
   });
@@ -164,10 +168,11 @@ async function withMcpClient<T>(fn: (client: Client) => Promise<T>): Promise<T> 
 }
 
 async function callMcpTool(
+  accessToken: string,
   toolName: string,
   args: Record<string, unknown>,
 ): Promise<McpToolResult> {
-  return withMcpClient(async (client) => {
+  return withMcpClient(accessToken, async (client) => {
     const available = await client.listTools();
     const hasTool = available.tools.some((tool) => tool.name === toolName);
 
@@ -220,12 +225,19 @@ function buildStructuredPagePayload(
 export async function callVoiceInboxTool(
   name: AllowedToolName,
   rawArgs: unknown,
+  accessToken?: string,
 ): Promise<NormalizedToolResult> {
   const config = getNotionMcpConfig();
+  const token = accessToken ?? config.accessToken;
+
+  if (!token) {
+    throw new Error("Connect Notion before saving notes.");
+  }
 
   if (name === "create_notion_page") {
     const note = createNotionPageSchema.parse(rawArgs);
     const result = await callMcpTool(
+      token,
       config.toolNames.createPage,
       buildStructuredPagePayload(note),
     );
@@ -251,7 +263,7 @@ export async function callVoiceInboxTool(
       );
     }
 
-    const result = await callMcpTool(config.toolNames.appendNote, {
+    const result = await callMcpTool(token, config.toolNames.appendNote, {
       ...buildStructuredPagePayload(note),
       pageId: targetPageId,
       page_id: targetPageId,
@@ -272,7 +284,7 @@ export async function callVoiceInboxTool(
   }
 
   const { limit } = listRecentIdeasSchema.parse(rawArgs ?? {});
-  const result = await callMcpTool(config.toolNames.listRecent, {
+  const result = await callMcpTool(token, config.toolNames.listRecent, {
     query: "Voice Action App ideas product content experiments strategy insights",
     limit,
   });

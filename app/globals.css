@@ -122,6 +122,68 @@ h1 {
   box-shadow: 0 0 0 6px rgba(255, 107, 107, 0.12);
 }
 
+.notion-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(18, 20, 29, 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.notion-strip div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.notion-strip p {
+  color: var(--soft);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.notion-strip a,
+.notion-strip button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: rgba(69, 212, 131, 0.14);
+  color: #bff8d2;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.notion-strip button {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--soft);
+}
+
+.notion-strip a[aria-disabled="true"],
+.notion-strip button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.dot-on {
+  background: var(--accent);
+  box-shadow: 0 0 0 6px rgba(69, 212, 131, 0.12);
+}
+
 .mic-panel {
   display: grid;
   place-items: center;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useRealtimeVoice } from "@/app/lib/realtime/useRealtimeVoice";
 
@@ -15,6 +15,8 @@ const statusCopy = {
 };
 
 export function VoiceInbox() {
+  const [notionConnected, setNotionConnected] = useState(false);
+  const [notionLoading, setNotionLoading] = useState(true);
   const {
     status,
     error,
@@ -27,13 +29,36 @@ export function VoiceInbox() {
     refreshRecentItems,
   } = useRealtimeVoice();
 
+  const refreshNotionStatus = useCallback(async () => {
+    try {
+      const response = await fetch("/api/notion/status");
+      const status = (await response.json()) as { connected?: boolean };
+      setNotionConnected(Boolean(status.connected));
+    } catch {
+      setNotionConnected(false);
+    } finally {
+      setNotionLoading(false);
+    }
+  }, []);
+
+  const disconnectNotion = useCallback(async () => {
+    setNotionLoading(true);
+    await fetch("/api/notion/disconnect", { method: "POST" });
+    await refreshNotionStatus();
+  }, [refreshNotionStatus]);
+
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       void navigator.serviceWorker.register("/sw.js");
     }
 
-    void refreshRecentItems();
-  }, [refreshRecentItems]);
+    const id = window.setTimeout(() => {
+      void refreshNotionStatus();
+      void refreshRecentItems();
+    }, 0);
+
+    return () => window.clearTimeout(id);
+  }, [refreshNotionStatus, refreshRecentItems]);
 
   return (
     <main className="shell">
@@ -47,6 +72,22 @@ export function VoiceInbox() {
           <span aria-hidden="true" />
           {statusCopy[status]}
         </div>
+      </section>
+
+      <section className="notion-strip" aria-label="Notion connection">
+        <div>
+          <span className={notionConnected ? "dot dot-on" : "dot"} />
+          <p>{notionConnected ? "Notion connected" : "Connect Notion to save ideas"}</p>
+        </div>
+        {notionConnected ? (
+          <button type="button" onClick={disconnectNotion} disabled={notionLoading}>
+            Disconnect
+          </button>
+        ) : (
+          <a aria-disabled={notionLoading} href="/api/notion/connect">
+            Connect Notion
+          </a>
+        )}
       </section>
 
       <section className="mic-panel" aria-label="Voice controls">

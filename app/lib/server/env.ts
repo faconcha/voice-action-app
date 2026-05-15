@@ -19,7 +19,7 @@ export function getRealtimeConfig() {
 export function getNotionMcpConfig() {
   return {
     url: process.env.NOTION_MCP_URL ?? "https://mcp.notion.com/mcp",
-    accessToken: requireEnv("NOTION_MCP_ACCESS_TOKEN"),
+    accessToken: process.env.NOTION_MCP_ACCESS_TOKEN,
     parentPageId: process.env.NOTION_PARENT_PAGE_ID,
     toolNames: {
       createPage:

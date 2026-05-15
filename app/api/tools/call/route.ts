@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { callVoiceInboxTool } from "@/app/lib/server/notion-mcp";
+import {
+  getValidNotionSession,
+  setNotionSession,
+} from "@/app/lib/server/notion-oauth";
 import { isAllowedToolName } from "@/app/lib/shared/tools";
 
 export const runtime = "nodejs";
@@ -11,7 +16,7 @@ const bodySchema = z.object({
   arguments: z.unknown().optional(),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = bodySchema.parse(await request.json());
 
@@ -22,8 +27,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await callVoiceInboxTool(body.name, body.arguments ?? {});
-    return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+    const { session, refreshed } = await getValidNotionSession(request);
+    const result = await callVoiceInboxTool(
+      body.name,
+      body.arguments ?? {},
+      session.accessToken,
+    );
+    const response = NextResponse.json(result, { status: result.ok ? 200 : 502 });
+
+    if (refreshed) {
+      setNotionSession(response, session);
+    }
+
+    return response;
   } catch (error) {
     const message =
       error instanceof z.ZodError

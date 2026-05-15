@@ -42,6 +42,7 @@ OPENAI_REALTIME_MODEL=gpt-realtime
 OPENAI_REALTIME_VOICE=marin
 
 NOTION_MCP_URL=https://mcp.notion.com/mcp
+NOTION_COOKIE_SECRET=
 NOTION_MCP_ACCESS_TOKEN=
 NOTION_PARENT_PAGE_ID=
 
@@ -56,12 +57,21 @@ The optional `NOTION_MCP_*_TOOL` variables exist because MCP servers can expose 
 
 ## Notion MCP Setup
 
-1. Connect your Notion workspace to the hosted Notion MCP endpoint.
-2. Generate or obtain a bearer access token for the hosted MCP server.
-3. Add the token to `NOTION_MCP_ACCESS_TOKEN`.
-4. Add a destination page id to `NOTION_PARENT_PAGE_ID`.
-5. Run `GET /api/health` locally to confirm the app sees the required configuration.
+The app connects to hosted Notion MCP through OAuth with PKCE.
+
+1. Generate a cookie secret:
+
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. Set the value as `NOTION_COOKIE_SECRET` locally and in Vercel.
+3. Open the app and tap `Connect Notion`.
+4. Authorize the Notion workspace.
+5. Return to the app and confirm it says `Notion connected`.
 6. If your Notion MCP server exposes different tool names, call the app once and read the returned error. It lists available MCP tool names. Put the matching names into the three `NOTION_MCP_*_TOOL` variables.
+
+`NOTION_MCP_ACCESS_TOKEN` is optional and only kept as a fallback for non-OAuth experiments. The production app should use the Connect Notion flow.
 
 The app never calls the Notion REST API directly.
 
