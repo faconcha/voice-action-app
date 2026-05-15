@@ -79,10 +79,34 @@ The Realtime session uses the exact Voice Action App system prompt in `app/lib/r
 
 ## Vercel Deployment
 
-1. Import this repository in Vercel.
-2. Set the project root to `voice-action-app`.
-3. Add the environment variables from `.env.example`.
-4. Deploy.
+The project is deployed manually because the GitHub repo is private and owned by an organization, which Vercel Hobby does not support for automatic Git integration.
+
+Production URL:
+
+```text
+https://voice-action-app.vercel.app
+```
+
+Manual deploy after every code change:
+
+```bash
+git status
+npm run typecheck
+npm run lint
+git add .
+git commit -m "Describe the change"
+git push
+npm run deploy
+```
+
+The key rule: whenever you push changes to GitHub, also run `npm run deploy` so Vercel gets the latest production version.
+
+The first deployment was linked with the Vercel CLI. If the project ever needs to be recreated manually:
+
+1. Run `npx vercel login`.
+2. Run `npx vercel --prod`.
+3. Add the environment variables from `.env.example` to the Vercel project.
+4. Redeploy with `npm run deploy`.
 
 No database is required. The production MVP is single-user: Notion access is provided by the configured MCP credential, not by an app auth flow.
 
@@ -98,6 +122,7 @@ npm run dev
 npm run typecheck
 npm run lint
 npm run build
+npm run deploy
 ```
 
 ## Manual Acceptance Test
