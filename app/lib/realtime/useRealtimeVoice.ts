@@ -338,8 +338,13 @@ export function useRealtimeVoice() {
       const tokenPayload = await tokenResponse.json();
 
       if (!tokenResponse.ok) {
+        const detail =
+          typeof tokenPayload.detail === "object" && tokenPayload.detail
+            ? JSON.stringify(tokenPayload.detail)
+            : undefined;
         throw new Error(
-          tokenPayload.error ?? "Could not create Realtime session.",
+          [tokenPayload.error, detail].filter(Boolean).join(" ") ||
+            "Could not create Realtime session.",
         );
       }
 
@@ -371,6 +376,8 @@ export function useRealtimeVoice() {
         sendRealtimeEvent({
           type: "session.update",
           session: {
+            type: "realtime",
+            model: "gpt-realtime",
             instructions: VOICE_INBOX_SYSTEM_PROMPT,
             tools: realtimeTools,
             tool_choice: "auto",
