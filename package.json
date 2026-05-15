@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "deploy": "vercel --prod"
+    "deploy": "npx --yes vercel@latest --prod"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
