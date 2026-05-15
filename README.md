@@ -89,7 +89,7 @@ The Realtime session uses the exact Voice Action App system prompt in `app/lib/r
 
 ## Vercel Deployment
 
-The project is deployed manually because the GitHub repo is private and owned by an organization, which Vercel Hobby does not support for automatic Git integration.
+The project is connected to GitHub through Vercel. Pushing to `main` should trigger a production deployment automatically.
 
 Production URL:
 
@@ -97,7 +97,7 @@ Production URL:
 https://voice-action-app.vercel.app
 ```
 
-Manual deploy after every code change:
+Normal update flow:
 
 ```bash
 git status
@@ -106,17 +106,20 @@ npm run lint
 git add .
 git commit -m "Describe the change"
 git push
+```
+
+If an automatic deployment does not start, run a manual production deploy:
+
+```bash
 npm run deploy
 ```
 
-The key rule: whenever you push changes to GitHub, also run `npm run deploy` so Vercel gets the latest production version.
-
-The first deployment was linked with the Vercel CLI. If the project ever needs to be recreated manually:
+If the project ever needs to be recreated manually:
 
 1. Run `npx vercel login`.
 2. Run `npx vercel --prod`.
 3. Add the environment variables from `.env.example` to the Vercel project.
-4. Redeploy with `npm run deploy`.
+4. Connect the GitHub repo in Vercel or redeploy with `npm run deploy`.
 
 No database is required. The production MVP is single-user: Notion access is provided by the configured MCP credential, not by an app auth flow.
 
