@@ -31,6 +31,9 @@ export function getNotionMcpConfig() {
       listRecent:
         process.env.NOTION_MCP_LIST_RECENT_TOOL ||
         "notion-search",
+      fetch:
+        process.env.NOTION_MCP_FETCH_TOOL ||
+        "notion-fetch",
     },
   };
 }

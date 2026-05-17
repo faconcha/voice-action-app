@@ -30,10 +30,26 @@ type NormalizedToolResult = {
 };
 
 type Destination = {
+  id?: string;
   pageId?: string;
+  dataSourceId?: string;
   url?: string;
   title?: string;
 };
+
+type NotionParent =
+  | { page_id: string }
+  | { data_source_id: string };
+
+type ResolvedTarget = {
+  parent?: NotionParent;
+  titleProperty: string;
+  pageId?: string;
+};
+
+type CreateNote = ReturnType<typeof createNotionPageSchema.parse>;
+type AppendNote = ReturnType<typeof appendNoteSchema.parse>;
+type ParsedNote = CreateNote | AppendNote;
 
 function getTextContent(result: McpToolResult): string {
   return (
@@ -50,6 +66,19 @@ function toRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
 
+function normalizeUuid(value: string): string {
+  const trimmed = value.trim();
+  const compact = trimmed.replace(/-/g, "");
+
+  if (!/^[0-9a-f]{32}$/i.test(compact)) {
+    return trimmed;
+  }
+
+  return compact
+    .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "$1-$2-$3-$4-$5")
+    .toLowerCase();
+}
+
 function extractIdFromUrl(url: string): string | undefined {
   const clean = url.split("?")[0] ?? url;
   const match = clean.match(/([0-9a-f]{32})(?:$|[^0-9a-f])/i);
@@ -58,10 +87,108 @@ function extractIdFromUrl(url: string): string | undefined {
     return undefined;
   }
 
-  return match[1].replace(
-    /^(.{8})(.{4})(.{4})(.{4})(.{12})$/,
-    "$1-$2-$3-$4-$5",
+  return normalizeUuid(match[1]);
+}
+
+function extractDataSourceId(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const collectionMatch = value.match(/collection:\/\/([0-9a-f-]{32,36})/i);
+  const dataSourceMatch = value.match(
+    /["']?(?:data_source_id|dataSourceId)["']?\s*[:=]\s*["']([0-9a-f-]{32,36})["']/i,
   );
+  const match = collectionMatch?.[1] ?? dataSourceMatch?.[1];
+
+  return match ? normalizeUuid(match) : undefined;
+}
+
+function getToolText(result: McpToolResult | null | undefined): string {
+  if (!result) {
+    return "";
+  }
+
+  const text = getTextContent(result);
+
+  if (text) {
+    return text;
+  }
+
+  if (result.structuredContent) {
+    return JSON.stringify(result.structuredContent);
+  }
+
+  return JSON.stringify(result);
+}
+
+function extractTitlePropertyFromStructured(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const titleProperty = extractTitlePropertyFromStructured(item);
+
+      if (titleProperty) {
+        return titleProperty;
+      }
+    }
+
+    return undefined;
+  }
+
+  const record = toRecord(value);
+
+  if (!record) {
+    return undefined;
+  }
+
+  const properties = toRecord(record.properties);
+
+  if (properties) {
+    for (const [name, property] of Object.entries(properties)) {
+      const propertyRecord = toRecord(property);
+
+      if (
+        propertyRecord?.type === "title" ||
+        propertyRecord?.id === "title"
+      ) {
+        return name;
+      }
+    }
+  }
+
+  for (const nested of Object.values(record)) {
+    const titleProperty = extractTitlePropertyFromStructured(nested);
+
+    if (titleProperty) {
+      return titleProperty;
+    }
+  }
+
+  return undefined;
+}
+
+function extractTitlePropertyFromFetch(result: McpToolResult | null | undefined) {
+  const structuredTitle = extractTitlePropertyFromStructured(
+    result?.structuredContent,
+  );
+
+  if (structuredTitle) {
+    return structuredTitle;
+  }
+
+  const text = getToolText(result);
+  const match =
+    text.match(/"([^"]+)"\s+TITLE\b/i) ??
+    text.match(/`([^`]+)`\s+TITLE\b/i) ??
+    text.match(/\b([A-Za-z][A-Za-z0-9 _-]{0,80})\s+TITLE\b/i);
+
+  return match?.[1]?.trim();
+}
+
+function extractFirstDataSourceIdFromFetch(
+  result: McpToolResult | null | undefined,
+) {
+  return extractDataSourceId(getToolText(result));
 }
 
 function extractDestinationsFromStructured(value: unknown): Destination[] {
@@ -80,6 +207,9 @@ function extractDestinationsFromStructured(value: unknown): Destination[] {
     record.page,
     record.result,
     record.resource,
+    record.database,
+    record.data_source,
+    record.dataSource,
     record.object,
   ]
     .map(toRecord)
@@ -90,12 +220,21 @@ function extractDestinationsFromStructured(value: unknown): Destination[] {
     record.items,
     record.pages,
     record.data,
+    record.databases,
+    record.data_sources,
+    record.dataSources,
   ].flatMap(extractDestinationsFromStructured);
 
   const direct = candidates
     .map<Destination | null>((item) => {
       const url = typeof item.url === "string" ? item.url : undefined;
-      const id =
+      const objectType =
+        typeof item.object === "string"
+          ? item.object
+          : typeof item.type === "string"
+            ? item.type
+            : undefined;
+      const rawId =
         typeof item.id === "string"
           ? item.id
           : typeof item.pageId === "string"
@@ -103,6 +242,18 @@ function extractDestinationsFromStructured(value: unknown): Destination[] {
             : url
               ? extractIdFromUrl(url)
               : undefined;
+      const id = rawId ? normalizeUuid(rawId) : undefined;
+      const dataSourceId =
+        (typeof item.data_source_id === "string"
+          ? normalizeUuid(item.data_source_id)
+          : typeof item.dataSourceId === "string"
+            ? normalizeUuid(item.dataSourceId)
+            : undefined) ??
+        extractDataSourceId(url) ??
+        extractDataSourceId(id) ??
+        (objectType?.includes("data_source") || objectType === "database"
+          ? id
+          : undefined);
       const title =
         typeof item.title === "string"
           ? item.title
@@ -110,7 +261,15 @@ function extractDestinationsFromStructured(value: unknown): Destination[] {
             ? item.name
             : undefined;
 
-      return id || url ? { pageId: id, url, title } : null;
+      return id || dataSourceId || url
+        ? {
+            id,
+            pageId: dataSourceId ? undefined : id,
+            dataSourceId,
+            url,
+            title,
+          }
+        : null;
     })
     .filter((item): item is Destination => item !== null);
 
@@ -131,10 +290,19 @@ function extractDestinations(result: McpToolResult): Destination[] {
     return extractDestinationsFromStructured(JSON.parse(text) as unknown);
   } catch {
     const urls = text.match(/https:\/\/(?:www\.)?notion\.so\/[^\s)]+/gi) ?? [];
-    return urls.map((url) => ({
+    const urlDestinations = urls.map<Destination>((url) => ({
       url,
+      id: extractIdFromUrl(url),
       pageId: extractIdFromUrl(url),
     }));
+    const collectionDestinations = Array.from(
+      text.matchAll(/collection:\/\/([0-9a-f-]{32,36})/gi),
+    ).map<Destination>((match) => ({
+      id: normalizeUuid(match[1]),
+      dataSourceId: normalizeUuid(match[1]),
+    }));
+
+    return [...collectionDestinations, ...urlDestinations];
   }
 }
 
@@ -329,6 +497,23 @@ async function callMcpTool(
   });
 }
 
+async function fetchNotionEntity(
+  accessToken: string,
+  id: string,
+): Promise<McpToolResult | null> {
+  const config = getNotionMcpConfig();
+
+  try {
+    return await callMcpTool(accessToken, config.toolNames.fetch, { id });
+  } catch (error) {
+    console.warn(
+      "[notion-mcp] Could not fetch Notion target schema:",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
 async function findDestination(
   accessToken: string,
   destinationHint?: string,
@@ -351,44 +536,126 @@ async function findDestination(
     destinations.find((destination) =>
       destination.title?.toLowerCase().includes(normalizedQuery),
     ) ??
+    destinations.find((destination) => Boolean(destination.dataSourceId)) ??
     destinations.find((destination) => Boolean(destination.pageId)) ??
     null
   );
 }
 
+async function resolveTarget(
+  accessToken: string,
+  destinationHint?: string,
+): Promise<ResolvedTarget> {
+  const config = getNotionMcpConfig();
+
+  if (config.parentPageId) {
+    const pageId = normalizeUuid(config.parentPageId);
+
+    return {
+      parent: { page_id: pageId },
+      titleProperty: "title",
+      pageId,
+    };
+  }
+
+  const destination = await findDestination(accessToken, destinationHint);
+
+  if (!destination) {
+    return { titleProperty: "title" };
+  }
+
+  if (destination.dataSourceId) {
+    const dataSource = await fetchNotionEntity(
+      accessToken,
+      `collection://${destination.dataSourceId}`,
+    );
+
+    return {
+      parent: { data_source_id: destination.dataSourceId },
+      titleProperty: extractTitlePropertyFromFetch(dataSource) ?? "Name",
+    };
+  }
+
+  const destinationId = destination.id ?? destination.pageId;
+  const fetched = destinationId
+    ? await fetchNotionEntity(accessToken, destinationId)
+    : null;
+  const fetchedDataSourceId = extractFirstDataSourceIdFromFetch(fetched);
+
+  if (fetchedDataSourceId) {
+    const dataSource = await fetchNotionEntity(
+      accessToken,
+      `collection://${fetchedDataSourceId}`,
+    );
+
+    return {
+      parent: { data_source_id: fetchedDataSourceId },
+      titleProperty:
+        extractTitlePropertyFromFetch(dataSource) ??
+        extractTitlePropertyFromFetch(fetched) ??
+        "Name",
+    };
+  }
+
+  const fetchedTitleProperty = extractTitlePropertyFromFetch(fetched);
+
+  if (destinationId && fetchedTitleProperty) {
+    return {
+      parent: { data_source_id: destinationId },
+      titleProperty: fetchedTitleProperty,
+    };
+  }
+
+  if (destination.pageId) {
+    return {
+      parent: { page_id: destination.pageId },
+      titleProperty: "title",
+      pageId: destination.pageId,
+    };
+  }
+
+  return { titleProperty: "title" };
+}
+
 async function buildStructuredPagePayload(
   accessToken: string,
-  note: ReturnType<typeof createNotionPageSchema.parse>,
+  note: ParsedNote,
 ) {
-  const config = getNotionMcpConfig();
   const content = noteToMarkdown(note);
-  const original = note.rawText ?? note.sourceTranscript ?? note.summary ?? note.title ?? "Untitled note";
-  const destination = config.parentPageId
-    ? null
-    : await findDestination(accessToken, note.destinationHint);
-  const parentPageId = config.parentPageId ?? destination?.pageId;
-  const parent = parentPageId ? { page_id: parentPageId } : undefined;
+  const original =
+    note.rawText ??
+    note.sourceTranscript ??
+    note.summary ??
+    note.title ??
+    "Untitled note";
+  const target = await resolveTarget(accessToken, note.destinationHint);
+  const title = note.title?.trim() || titleFromText(original);
+  const page = {
+    properties: {
+      [target.titleProperty]: title,
+    },
+    ...(content ? { content } : {}),
+  };
 
   return {
-    ...(parent ? { parent } : {}),
-    pages: [
-      {
-        properties: {
-          title: note.title ?? titleFromText(original),
-        },
-        content,
-      },
-    ],
+    ...(target.parent ? { parent: target.parent } : {}),
+    pages: [page],
   };
 }
 
 async function buildAppendPayload(
   accessToken: string,
-  note: ReturnType<typeof createNotionPageSchema.parse>,
+  note: ParsedNote,
 ) {
   const config = getNotionMcpConfig();
-  const destination = await findDestination(accessToken, note.destinationHint);
-  const pageId = destination?.pageId ?? config.parentPageId;
+  const explicitPageId = "pageId" in note ? note.pageId : undefined;
+  const target = explicitPageId
+    ? null
+    : await resolveTarget(accessToken, note.destinationHint);
+  const pageId =
+    explicitPageId ??
+    target?.pageId ??
+    (config.parentPageId ? normalizeUuid(config.parentPageId) : undefined);
 
   if (!pageId) {
     return null;
@@ -439,22 +706,12 @@ export async function callVoiceInboxTool(
 
   if (name === "append_note") {
     const note = appendNoteSchema.parse(rawArgs);
-    const targetPageId = note.pageId ?? config.parentPageId;
-
-    if (!targetPageId) {
-      throw new Error(
-        "append_note requires pageId or NOTION_PARENT_PAGE_ID to be configured.",
-      );
-    }
-
-    const result = await callMcpTool(token, config.toolNames.appendNote, {
-      ...(await buildStructuredPagePayload(token, note)),
-      pageId: targetPageId,
-      page_id: targetPageId,
-      command: "insert_content_after",
-      selection_with_ellipsis: "...",
-      new_str: noteToMarkdown(note),
-    });
+    const appendPayload = await buildAppendPayload(token, note);
+    const result = await callMcpTool(
+      token,
+      appendPayload ? config.toolNames.appendNote : config.toolNames.createPage,
+      appendPayload ?? (await buildStructuredPagePayload(token, note)),
+    );
 
     if (result.isError) {
       return { ok: false, message: getTextContent(result) || "Notion append failed." };

@@ -49,6 +49,7 @@ NOTION_PARENT_PAGE_ID=
 NOTION_MCP_CREATE_PAGE_TOOL=
 NOTION_MCP_APPEND_NOTE_TOOL=
 NOTION_MCP_LIST_RECENT_TOOL=
+NOTION_MCP_FETCH_TOOL=
 ```
 
 `OPENAI_REALTIME_MODEL` should remain `gpt-realtime` for this MVP.
@@ -69,7 +70,9 @@ The app connects to hosted Notion MCP through OAuth with PKCE.
 3. Open the app and tap `Connect Notion`.
 4. Authorize the Notion workspace.
 5. Return to the app and confirm it says `Notion connected`.
-6. If your Notion MCP server exposes different tool names, call the app once and read the returned error. It lists available MCP tool names. Put the matching names into the three `NOTION_MCP_*_TOOL` variables.
+6. If your Notion MCP server exposes different tool names, call the app once and read the returned error. It lists available MCP tool names. Put the matching names into the `NOTION_MCP_*_TOOL` variables.
+
+The backend uses `NOTION_MCP_FETCH_TOOL` internally to inspect a target database/data-source schema before creating a page. This keeps database rows from being created with blank visible titles when the title column is named something like `Name` or `Idea` instead of `title`. The Realtime model still only sees the three app tools: `create_notion_page`, `append_note`, and `list_recent_ideas`.
 
 `NOTION_MCP_ACCESS_TOKEN` is optional and only kept as a fallback for non-OAuth experiments. The production app should use the Connect Notion flow.
 
