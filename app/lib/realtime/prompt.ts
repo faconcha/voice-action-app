@@ -14,6 +14,8 @@ Behavior:
 * If the destination is not explicit, use "Sandbox de ideas".
 * If I mention a destination, use that as destinationHint.
 * Preserve the core wording of what I said. Clean lightly, but do not over-interpret.
+* Always generate a useful Notion page title. Never leave the title empty.
+* Keep the Notion body minimal: description plus date when useful.
 * Generate lightweight metadata only:
 
   * title

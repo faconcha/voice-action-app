@@ -218,31 +218,25 @@ function noteToMarkdown(note: {
   sourceTranscript?: string;
 }) {
   const original = note.rawText ?? note.sourceTranscript ?? note.summary ?? note.title ?? "Untitled note";
-  const summary = note.summary ?? original;
+  const description =
+    note.summary && note.summary.trim() !== note.title?.trim()
+      ? note.summary.trim()
+      : original.trim();
+  const date = new Intl.DateTimeFormat("es-CL", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "America/Santiago",
+  }).format(new Date());
 
   return [
-    `# ${note.title ?? titleFromText(original)}`,
-    "",
-    `## Original`,
-    original,
-    "",
-    `## Summary`,
-    summary,
-    "",
-    `## Tags`,
-    note.tags.length ? note.tags.map((tag) => `- ${tag}`).join("\n") : "- untagged",
-    "",
-    `## Next action`,
-    note.nextAction,
-    "",
-    `## Priority`,
-    note.priority,
-    note.sourceTranscript
-      ? ["", "## Source transcript", note.sourceTranscript].join("\n")
+    `**Fecha:** ${date}`,
+    description ? `**Descripción:** ${description}` : "",
+    note.rawText && note.rawText.trim() !== description
+      ? `**Nota original:** ${note.rawText.trim()}`
       : "",
   ]
     .filter((part) => part !== "")
-    .join("\n");
+    .join("\n\n");
 }
 
 function titleFromText(text: string) {
@@ -252,7 +246,7 @@ function titleFromText(text: string) {
     return "Untitled note";
   }
 
-  return clean.length > 80 ? `${clean.slice(0, 77)}...` : clean;
+  return clean.length > 60 ? `${clean.slice(0, 57)}...` : clean;
 }
 
 async function withMcpClient<T>(
