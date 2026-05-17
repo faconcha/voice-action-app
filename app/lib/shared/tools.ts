@@ -13,8 +13,8 @@ export const prioritySchema = z.enum(["low", "medium", "high"]);
 export const structuredNoteSchema = z.object({
   rawText: z.string().min(1).max(8000).optional(),
   destinationHint: z.string().min(1).max(200).optional(),
-  title: z.string().min(1).max(140),
-  summary: z.string().min(1).max(4000),
+  title: z.string().min(1).max(140).optional(),
+  summary: z.string().min(1).max(4000).optional(),
   tags: z.array(z.string().min(1).max(48)).max(12).default([]),
   nextAction: z.string().min(1).max(500).default("Review later"),
   priority: prioritySchema.default("medium"),

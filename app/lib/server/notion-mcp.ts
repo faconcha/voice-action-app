@@ -210,21 +210,24 @@ function parseRecentIdeas(result: McpToolResult): RecentIdea[] {
 
 function noteToMarkdown(note: {
   rawText?: string;
-  title: string;
-  summary: string;
+  title?: string;
+  summary?: string;
   tags: string[];
   nextAction: string;
   priority: string;
   sourceTranscript?: string;
 }) {
+  const original = note.rawText ?? note.sourceTranscript ?? note.summary ?? note.title ?? "Untitled note";
+  const summary = note.summary ?? original;
+
   return [
-    `# ${note.title}`,
+    `# ${note.title ?? titleFromText(original)}`,
     "",
     `## Original`,
-    note.rawText ?? note.sourceTranscript ?? note.summary,
+    original,
     "",
     `## Summary`,
-    note.summary,
+    summary,
     "",
     `## Tags`,
     note.tags.length ? note.tags.map((tag) => `- ${tag}`).join("\n") : "- untagged",
@@ -240,6 +243,16 @@ function noteToMarkdown(note: {
   ]
     .filter((part) => part !== "")
     .join("\n");
+}
+
+function titleFromText(text: string) {
+  const clean = text.trim().replace(/\s+/g, " ");
+
+  if (!clean) {
+    return "Untitled note";
+  }
+
+  return clean.length > 80 ? `${clean.slice(0, 77)}...` : clean;
 }
 
 async function withMcpClient<T>(
@@ -326,6 +339,7 @@ async function buildStructuredPagePayload(
 ) {
   const config = getNotionMcpConfig();
   const content = noteToMarkdown(note);
+  const original = note.rawText ?? note.sourceTranscript ?? note.summary ?? note.title ?? "Untitled note";
   const destination = config.parentPageId
     ? null
     : await findDestination(accessToken, note.destinationHint);
@@ -337,7 +351,7 @@ async function buildStructuredPagePayload(
     pages: [
       {
         properties: {
-          title: note.title,
+          title: note.title ?? titleFromText(original),
         },
         content,
       },
