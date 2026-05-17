@@ -48,6 +48,8 @@ export async function POST(request: NextRequest) {
           ? error.message
           : "Unknown tool error.";
 
+    console.error("[tools/call]", message);
+
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

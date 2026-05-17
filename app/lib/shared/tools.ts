@@ -11,11 +11,13 @@ export type AllowedToolName = (typeof allowedToolNames)[number];
 export const prioritySchema = z.enum(["low", "medium", "high"]);
 
 export const structuredNoteSchema = z.object({
+  rawText: z.string().min(1).max(8000).optional(),
+  destinationHint: z.string().min(1).max(200).optional(),
   title: z.string().min(1).max(140),
   summary: z.string().min(1).max(4000),
   tags: z.array(z.string().min(1).max(48)).max(12).default([]),
-  nextAction: z.string().min(1).max(500),
-  priority: prioritySchema,
+  nextAction: z.string().min(1).max(500).default("Review later"),
+  priority: prioritySchema.default("medium"),
   sourceTranscript: z.string().max(8000).optional(),
 });
 
@@ -46,15 +48,24 @@ export const realtimeTools = [
     type: "function",
     name: "create_notion_page",
     description:
-      "Save a sufficiently clear idea, todo, insight, experiment, or content concept as a structured Notion page.",
+      "Save the current spoken note to Notion immediately. Use this whenever the user asks to save/capture/remember something, even if the content is simple, rough, or obviously false.",
     parameters: {
       type: "object",
       additionalProperties: false,
       properties: {
-        title: { type: "string", description: "Short clear title." },
+        rawText: {
+          type: "string",
+          description: "The user's exact note or the closest transcript of what should be saved.",
+        },
+        destinationHint: {
+          type: "string",
+          description:
+            "Optional target mentioned by the user, such as Sandbox de ideas, a database, or a page name. Use Sandbox de ideas by default.",
+        },
+        title: { type: "string", description: "Short literal title." },
         summary: {
           type: "string",
-          description: "Concise cleaned-up note, not a transcript.",
+          description: "A minimal summary. Do not over-interpret or challenge the user.",
         },
         tags: {
           type: "array",
@@ -71,7 +82,7 @@ export const realtimeTools = [
           description: "Optional relevant user wording.",
         },
       },
-      required: ["title", "summary", "tags", "nextAction", "priority"],
+      required: ["rawText", "title", "summary", "tags", "nextAction", "priority"],
     },
   },
   {

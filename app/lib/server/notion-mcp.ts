@@ -29,6 +29,12 @@ type NormalizedToolResult = {
   recentItems?: RecentIdea[];
 };
 
+type Destination = {
+  pageId?: string;
+  url?: string;
+  title?: string;
+};
+
 function getTextContent(result: McpToolResult): string {
   return (
     result.content
@@ -38,6 +44,98 @@ function getTextContent(result: McpToolResult): string {
       .filter(Boolean)
       .join("\n") || ""
   );
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function extractIdFromUrl(url: string): string | undefined {
+  const clean = url.split("?")[0] ?? url;
+  const match = clean.match(/([0-9a-f]{32})(?:$|[^0-9a-f])/i);
+
+  if (!match?.[1]) {
+    return undefined;
+  }
+
+  return match[1].replace(
+    /^(.{8})(.{4})(.{4})(.{4})(.{12})$/,
+    "$1-$2-$3-$4-$5",
+  );
+}
+
+function extractDestinationsFromStructured(value: unknown): Destination[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(extractDestinationsFromStructured);
+  }
+
+  const record = toRecord(value);
+
+  if (!record) {
+    return [];
+  }
+
+  const candidates = [
+    record,
+    record.page,
+    record.result,
+    record.resource,
+    record.object,
+  ]
+    .map(toRecord)
+    .filter((item): item is Record<string, unknown> => Boolean(item));
+
+  const nested = [
+    record.results,
+    record.items,
+    record.pages,
+    record.data,
+  ].flatMap(extractDestinationsFromStructured);
+
+  const direct = candidates
+    .map<Destination | null>((item) => {
+      const url = typeof item.url === "string" ? item.url : undefined;
+      const id =
+        typeof item.id === "string"
+          ? item.id
+          : typeof item.pageId === "string"
+            ? item.pageId
+            : url
+              ? extractIdFromUrl(url)
+              : undefined;
+      const title =
+        typeof item.title === "string"
+          ? item.title
+          : typeof item.name === "string"
+            ? item.name
+            : undefined;
+
+      return id || url ? { pageId: id, url, title } : null;
+    })
+    .filter((item): item is Destination => item !== null);
+
+  return [...direct, ...nested];
+}
+
+function extractDestinations(result: McpToolResult): Destination[] {
+  const structured = result.structuredContent;
+  const fromStructured = extractDestinationsFromStructured(structured);
+
+  if (fromStructured.length > 0) {
+    return fromStructured;
+  }
+
+  const text = getTextContent(result);
+
+  try {
+    return extractDestinationsFromStructured(JSON.parse(text) as unknown);
+  } catch {
+    const urls = text.match(/https:\/\/(?:www\.)?notion\.so\/[^\s)]+/gi) ?? [];
+    return urls.map((url) => ({
+      url,
+      pageId: extractIdFromUrl(url),
+    }));
+  }
 }
 
 function asRecentIdeas(value: unknown): RecentIdea[] {
@@ -111,6 +209,7 @@ function parseRecentIdeas(result: McpToolResult): RecentIdea[] {
 }
 
 function noteToMarkdown(note: {
+  rawText?: string;
   title: string;
   summary: string;
   tags: string[];
@@ -120,6 +219,9 @@ function noteToMarkdown(note: {
 }) {
   return [
     `# ${note.title}`,
+    "",
+    `## Original`,
+    note.rawText ?? note.sourceTranscript ?? note.summary,
     "",
     `## Summary`,
     note.summary,
@@ -191,34 +293,55 @@ async function callMcpTool(
   });
 }
 
-function buildStructuredPagePayload(
+async function findDestination(
+  accessToken: string,
+  destinationHint?: string,
+): Promise<Destination | null> {
+  const config = getNotionMcpConfig();
+  const query = destinationHint?.trim() || "Sandbox de ideas";
+  const result = await callMcpTool(accessToken, config.toolNames.listRecent, {
+    query,
+    limit: 5,
+  });
+
+  if (result.isError) {
+    return null;
+  }
+
+  const destinations = extractDestinations(result);
+  const normalizedQuery = query.toLowerCase();
+
+  return (
+    destinations.find((destination) =>
+      destination.title?.toLowerCase().includes(normalizedQuery),
+    ) ??
+    destinations.find((destination) => Boolean(destination.pageId)) ??
+    null
+  );
+}
+
+async function buildStructuredPagePayload(
+  accessToken: string,
   note: ReturnType<typeof createNotionPageSchema.parse>,
 ) {
   const config = getNotionMcpConfig();
   const content = noteToMarkdown(note);
+  const destination = config.parentPageId
+    ? null
+    : await findDestination(accessToken, note.destinationHint);
+  const parentPageId = config.parentPageId ?? destination?.pageId;
+  const parent = parentPageId ? { page_id: parentPageId } : undefined;
 
   return {
-    parent: config.parentPageId ? { page_id: config.parentPageId } : undefined,
-    parentPageId: config.parentPageId,
-    parent_page_id: config.parentPageId,
+    ...(parent ? { parent } : {}),
     pages: [
       {
         properties: {
           title: note.title,
         },
         content,
-        icon: "🎙️",
       },
     ],
-    title: note.title,
-    summary: note.summary,
-    tags: note.tags,
-    nextAction: note.nextAction,
-    next_action: note.nextAction,
-    priority: note.priority,
-    sourceTranscript: note.sourceTranscript,
-    source_transcript: note.sourceTranscript,
-    content,
   };
 }
 
@@ -239,7 +362,7 @@ export async function callVoiceInboxTool(
     const result = await callMcpTool(
       token,
       config.toolNames.createPage,
-      buildStructuredPagePayload(note),
+      await buildStructuredPagePayload(token, note),
     );
 
     if (result.isError) {
@@ -264,7 +387,7 @@ export async function callVoiceInboxTool(
     }
 
     const result = await callMcpTool(token, config.toolNames.appendNote, {
-      ...buildStructuredPagePayload(note),
+      ...(await buildStructuredPagePayload(token, note)),
       pageId: targetPageId,
       page_id: targetPageId,
       command: "insert_content_after",
