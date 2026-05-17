@@ -13,6 +13,7 @@ export const prioritySchema = z.enum(["low", "medium", "high"]);
 export const structuredNoteSchema = z.object({
   rawText: z.string().min(1).max(8000).optional(),
   destinationHint: z.string().min(1).max(200).optional(),
+  appendToExisting: z.boolean().default(false),
   title: z.string().min(1).max(140).optional(),
   summary: z.string().min(1).max(4000).optional(),
   tags: z.array(z.string().min(1).max(48)).max(12).default([]),
@@ -62,10 +63,16 @@ export const realtimeTools = [
           description:
             "Optional target mentioned by the user, such as Sandbox de ideas, a database, or a page name. Use Sandbox de ideas by default.",
         },
-        title: { type: "string", description: "Short literal title." },
+        appendToExisting: {
+          type: "boolean",
+          description:
+            "Set true only when the user explicitly says to add/update/append to an existing page/database item, or the conversation clearly refers to an existing experiment/page.",
+        },
+        title: { type: "string", description: "Useful Notion page title." },
         summary: {
           type: "string",
-          description: "A minimal summary. Do not over-interpret or challenge the user.",
+          description:
+            "Only include a description when the conversation contains enough information. For tiny notes, omit or keep it very short.",
         },
         tags: {
           type: "array",
@@ -82,7 +89,7 @@ export const realtimeTools = [
           description: "Optional relevant user wording.",
         },
       },
-      required: ["rawText", "title", "summary", "tags", "nextAction", "priority"],
+      required: ["rawText", "title", "tags", "nextAction", "priority"],
     },
   },
   {
@@ -103,6 +110,8 @@ export const realtimeTools = [
         tags: { type: "array", items: { type: "string" } },
         nextAction: { type: "string" },
         priority: { type: "string", enum: ["low", "medium", "high"] },
+        rawText: { type: "string" },
+        destinationHint: { type: "string" },
         sourceTranscript: { type: "string" },
       },
       required: ["title", "summary", "tags", "nextAction", "priority"],

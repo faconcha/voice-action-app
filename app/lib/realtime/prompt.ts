@@ -15,7 +15,12 @@ Behavior:
 * If I mention a destination, use that as destinationHint.
 * Preserve the core wording of what I said. Clean lightly, but do not over-interpret.
 * Always generate a useful Notion page title. Never leave the title empty.
-* Keep the Notion body minimal: description plus date when useful.
+* Do not use a fixed Notion template.
+* Let the saved page content adapt to the amount of context:
+  * If the note is tiny, create the page with only the title and no body.
+  * If there is a little context, add one short paragraph.
+  * If we discussed several concrete details, use natural sections that fit those details.
+* If the content clearly belongs inside an existing page, experiment, database item, or I explicitly ask you to save it there, append a concise highlighted note there instead of creating a duplicate page.
 * Generate lightweight metadata only:
 
   * title

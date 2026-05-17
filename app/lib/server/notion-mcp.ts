@@ -218,25 +218,54 @@ function noteToMarkdown(note: {
   sourceTranscript?: string;
 }) {
   const original = note.rawText ?? note.sourceTranscript ?? note.summary ?? note.title ?? "Untitled note";
-  const description =
-    note.summary && note.summary.trim() !== note.title?.trim()
-      ? note.summary.trim()
-      : original.trim();
-  const date = new Intl.DateTimeFormat("es-CL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "America/Santiago",
-  }).format(new Date());
+  const description = note.summary?.trim();
+  const title = note.title?.trim();
+  const hasUsefulDescription =
+    description &&
+    description !== title &&
+    description !== original.trim() &&
+    description.length > 8;
 
   return [
-    `**Fecha:** ${date}`,
-    description ? `**Descripción:** ${description}` : "",
-    note.rawText && note.rawText.trim() !== description
-      ? `**Nota original:** ${note.rawText.trim()}`
-      : "",
+    hasUsefulDescription ? description : "",
+    shouldKeepRawText(note, description) ? note.rawText?.trim() : "",
   ]
     .filter((part) => part !== "")
     .join("\n\n");
+}
+
+function noteToAppendMarkdown(note: {
+  rawText?: string;
+  title?: string;
+  summary?: string;
+  sourceTranscript?: string;
+}) {
+  const original = note.rawText ?? note.sourceTranscript ?? note.summary ?? note.title ?? "Nota";
+  const body = note.summary?.trim() || original.trim();
+
+  return [
+    "> " + (note.title ? `**${note.title.trim()}**` : "**Nota rápida**"),
+    body ? `> ${body}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function shouldKeepRawText(
+  note: { rawText?: string; title?: string; summary?: string },
+  description?: string,
+) {
+  const raw = note.rawText?.trim();
+
+  if (!raw) {
+    return false;
+  }
+
+  if (!description) {
+    return false;
+  }
+
+  return raw !== description && raw !== note.title?.trim();
 }
 
 function titleFromText(text: string) {
@@ -353,6 +382,27 @@ async function buildStructuredPagePayload(
   };
 }
 
+async function buildAppendPayload(
+  accessToken: string,
+  note: ReturnType<typeof createNotionPageSchema.parse>,
+) {
+  const config = getNotionMcpConfig();
+  const destination = await findDestination(accessToken, note.destinationHint);
+  const pageId = destination?.pageId ?? config.parentPageId;
+
+  if (!pageId) {
+    return null;
+  }
+
+  return {
+    page_id: pageId,
+    pageId,
+    command: "insert_content_after",
+    selection_with_ellipsis: "...",
+    new_str: noteToAppendMarkdown(note),
+  };
+}
+
 export async function callVoiceInboxTool(
   name: AllowedToolName,
   rawArgs: unknown,
@@ -367,10 +417,13 @@ export async function callVoiceInboxTool(
 
   if (name === "create_notion_page") {
     const note = createNotionPageSchema.parse(rawArgs);
+    const appendPayload = note.appendToExisting
+      ? await buildAppendPayload(token, note)
+      : null;
     const result = await callMcpTool(
       token,
-      config.toolNames.createPage,
-      await buildStructuredPagePayload(token, note),
+      appendPayload ? config.toolNames.appendNote : config.toolNames.createPage,
+      appendPayload ?? (await buildStructuredPagePayload(token, note)),
     );
 
     if (result.isError) {
