@@ -67,6 +67,11 @@ function nowLabel() {
   }).format(new Date());
 }
 
+const completionEventTypes = new Set([
+  "response.output_item.done",
+  "response.done",
+]);
+
 function parseToolCalls(event: RealtimeServerEvent): PendingToolCall[] {
   const directCallId = event.call_id;
 
@@ -84,6 +89,10 @@ function parseToolCalls(event: RealtimeServerEvent): PendingToolCall[] {
     ];
   }
 
+  if (!event.type || !completionEventTypes.has(event.type)) {
+    return [];
+  }
+
   const candidates = [
     event.item,
     ...(event.response?.output ?? []),
@@ -96,7 +105,7 @@ function parseToolCalls(event: RealtimeServerEvent): PendingToolCall[] {
       name: String(item.name ?? ""),
       argsText: String(item.arguments ?? "{}"),
     }))
-    .filter((call) => call.callId && call.name);
+    .filter((call) => call.callId && call.name && call.argsText.trim().length > 0);
 }
 
 function parseArgs(argsText: string): unknown {
