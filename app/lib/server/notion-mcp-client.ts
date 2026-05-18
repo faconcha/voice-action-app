@@ -510,15 +510,6 @@ export async function resolveTarget(
     };
   }
 
-  const fetchedTitleProperty = extractTitlePropertyFromFetch(fetched);
-
-  if (destinationId && fetchedTitleProperty) {
-    return {
-      parent: { data_source_id: destinationId },
-      titleProperty: fetchedTitleProperty,
-    };
-  }
-
   if (destination.pageId) {
     return {
       parent: { page_id: destination.pageId },
