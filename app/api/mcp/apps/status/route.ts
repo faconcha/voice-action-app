@@ -13,8 +13,12 @@ export async function GET(request: NextRequest) {
       return {
         id: app.id,
         label: app.label,
+        authMode: app.authMode,
+        setupUrl: app.setupUrl,
         configured: Boolean(app.mcpUrl),
         oauthConfigured: Boolean(app.authServer),
+        envAccessTokenConfigured: Boolean(app.accessToken),
+        usesEnvToken: Boolean(app.accessToken),
         connected: Boolean(session?.accessToken || app.accessToken),
         expiresAt: session?.expiresAt,
       };

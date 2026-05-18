@@ -14,9 +14,11 @@ export type McpToolNames = {
 export type McpAppConfig = {
   id: McpAppId;
   label: string;
+  authMode: "oauth" | "bearer-token";
   cookieKey: string;
   mcpUrl: string;
   authServer: string;
+  setupUrl?: string;
   accessToken?: string;
   clientId?: string;
   clientSecret?: string;
@@ -48,6 +50,7 @@ export function getMcpAppConfig(appId: McpAppId): McpAppConfig {
     return {
       id: "notion",
       label: "Notion",
+      authMode: "oauth",
       cookieKey: "notion",
       mcpUrl,
       authServer:
@@ -75,19 +78,23 @@ export function getMcpAppConfig(appId: McpAppId): McpAppConfig {
     };
   }
 
-  const mcpUrl = process.env.GOOGLE_CALENDAR_MCP_URL ?? "";
+  const mcpUrl =
+    process.env.GOOGLE_CALENDAR_MCP_URL ??
+    "https://calendarmcp.ai/api/mcp";
   const authServer =
     process.env.GOOGLE_CALENDAR_MCP_AUTH_SERVER ??
-    (mcpUrl ? originFromUrl(mcpUrl) : "");
+    "";
   const createEvent = process.env.GOOGLE_CALENDAR_MCP_CREATE_EVENT_TOOL;
   const listEvents = process.env.GOOGLE_CALENDAR_MCP_LIST_EVENTS_TOOL;
 
   return {
     id: "google-calendar",
     label: "Google Calendar",
+    authMode: "bearer-token",
     cookieKey: "google_calendar",
     mcpUrl,
     authServer,
+    setupUrl: "https://calendarmcp.ai/",
     accessToken: process.env.GOOGLE_CALENDAR_MCP_ACCESS_TOKEN,
     clientId: process.env.GOOGLE_CALENDAR_MCP_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CALENDAR_MCP_CLIENT_SECRET,

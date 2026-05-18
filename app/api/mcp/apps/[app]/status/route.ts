@@ -18,8 +18,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
   return NextResponse.json({
     id: app.id,
     label: app.label,
+    authMode: app.authMode,
+    setupUrl: app.setupUrl,
     configured: Boolean(app.mcpUrl),
     oauthConfigured: Boolean(app.authServer),
+    envAccessTokenConfigured: Boolean(app.accessToken),
+    usesEnvToken: Boolean(app.accessToken),
     connected: Boolean(session?.accessToken || app.accessToken),
     expiresAt: session?.expiresAt,
   });

@@ -17,10 +17,28 @@ const statusCopy = {
 type McpAppStatus = {
   id: string;
   label: string;
+  authMode: "oauth" | "bearer-token";
+  setupUrl?: string;
   configured: boolean;
   oauthConfigured: boolean;
+  envAccessTokenConfigured: boolean;
+  usesEnvToken: boolean;
   connected: boolean;
 };
+
+function appStatusCopy(app: McpAppStatus) {
+  if (app.connected) {
+    return `${app.label} connected`;
+  }
+
+  if (app.authMode === "bearer-token" && !app.envAccessTokenConfigured) {
+    return `Add ${app.label} API key`;
+  }
+
+  return app.configured && app.oauthConfigured
+    ? `Connect ${app.label}`
+    : `Configure ${app.label} MCP`;
+}
 
 export function VoiceInbox() {
   const [apps, setApps] = useState<McpAppStatus[]>([]);
@@ -90,15 +108,13 @@ export function VoiceInbox() {
           <div className="app-row" key={app.id}>
             <div>
               <span className={app.connected ? "dot dot-on" : "dot"} />
-              <p>
-                {app.connected
-                  ? `${app.label} connected`
-                  : app.configured && app.oauthConfigured
-                    ? `Connect ${app.label}`
-                    : `Configure ${app.label} MCP`}
-              </p>
+              <p>{appStatusCopy(app)}</p>
             </div>
-            {app.connected ? (
+            {app.connected && app.usesEnvToken ? (
+              <button type="button" disabled>
+                Server key
+              </button>
+            ) : app.connected ? (
               <button
                 type="button"
                 onClick={() => disconnectApp(app.id)}
@@ -106,9 +122,13 @@ export function VoiceInbox() {
               >
                 Disconnect
               </button>
-            ) : app.configured && app.oauthConfigured ? (
+            ) : app.authMode === "oauth" && app.configured && app.oauthConfigured ? (
               <a aria-disabled={appsLoading} href={`/api/mcp/apps/${app.id}/connect`}>
                 Connect
+              </a>
+            ) : app.setupUrl ? (
+              <a href={app.setupUrl} rel="noreferrer" target="_blank">
+                Get key
               </a>
             ) : (
               <button type="button" disabled>

@@ -91,14 +91,15 @@ The app never calls the Notion REST API directly.
 
 ## Google Calendar MCP Setup
 
-Google Calendar support expects a separate Streamable HTTP MCP server that exposes OAuth and calendar tools. Configure:
+Google Calendar support defaults to CalendarMCP, a hosted Streamable HTTP MCP server. Configure:
 
-- `GOOGLE_CALENDAR_MCP_URL`: the MCP endpoint, for example `https://your-calendar-mcp.example.com/mcp`
-- `GOOGLE_CALENDAR_MCP_AUTH_SERVER`: optional OAuth issuer/base URL when it differs from the MCP URL origin
+- `GOOGLE_CALENDAR_MCP_ACCESS_TOKEN`: your CalendarMCP API key
+- `GOOGLE_CALENDAR_MCP_URL`: optional override; defaults to `https://calendarmcp.ai/api/mcp`
+- `GOOGLE_CALENDAR_MCP_AUTH_SERVER`: leave blank for CalendarMCP API-key auth
 - `GOOGLE_CALENDAR_MCP_CLIENT_ID` and `GOOGLE_CALENDAR_MCP_CLIENT_SECRET`: optional static MCP OAuth client credentials when the server does not support dynamic client registration
 - `GOOGLE_CALENDAR_MCP_CREATE_EVENT_TOOL` and `GOOGLE_CALENDAR_MCP_LIST_EVENTS_TOOL`: optional concrete tool-name overrides
 
-After the variables are set locally or in Vercel, open the app and tap `Connect` next to Google Calendar. The Realtime agent can then call `create_calendar_event` and `list_calendar_events`, while the browser still only sends tool calls to `/api/mcp/tools/call`.
+For CalendarMCP, connect your Google account at `https://calendarmcp.ai/`, copy the API key into `GOOGLE_CALENDAR_MCP_ACCESS_TOKEN`, then redeploy. The Realtime agent can then call `create_calendar_event` and `list_calendar_events`, while the browser still only sends tool calls to `/api/mcp/tools/call`.
 
 The app does not call the Google Calendar REST API directly. Calendar actions go through the configured Google Calendar MCP server.
 

@@ -14,6 +14,7 @@ export async function GET() {
     mcpApps: getMcpAppConfigs().map((app) => ({
       id: app.id,
       label: app.label,
+      authMode: app.authMode,
       configured: Boolean(app.mcpUrl),
       oauthConfigured: Boolean(app.authServer),
       envAccessTokenConfigured: Boolean(app.accessToken),
