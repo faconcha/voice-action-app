@@ -1,3 +1,5 @@
+import { getMcpAppConfig } from "@/app/lib/server/mcp-apps";
+
 export function requireEnv(name: string): string {
   const value = process.env[name];
 
@@ -17,23 +19,21 @@ export function getRealtimeConfig() {
 }
 
 export function getNotionMcpConfig() {
+  const config = getMcpAppConfig("notion");
+
   return {
-    url: process.env.NOTION_MCP_URL ?? "https://mcp.notion.com/mcp",
-    accessToken: process.env.NOTION_MCP_ACCESS_TOKEN,
-    parentPageId: process.env.NOTION_PARENT_PAGE_ID,
+    url: config.mcpUrl,
+    accessToken: config.accessToken,
+    parentPageId: config.parentPageId,
     toolNames: {
-      createPage:
-        process.env.NOTION_MCP_CREATE_PAGE_TOOL ||
-        "notion-create-pages",
-      appendNote:
-        process.env.NOTION_MCP_APPEND_NOTE_TOOL ||
-        "notion-update-page",
-      listRecent:
-        process.env.NOTION_MCP_LIST_RECENT_TOOL ||
-        "notion-search",
-      fetch:
-        process.env.NOTION_MCP_FETCH_TOOL ||
-        "notion-fetch",
+      createPage: config.toolNames.createPage ?? "notion-create-pages",
+      appendNote: config.toolNames.appendNote ?? "notion-update-page",
+      listRecent: config.toolNames.listRecent ?? "notion-search",
+      fetch: config.toolNames.fetch ?? "notion-fetch",
     },
   };
+}
+
+export function getGoogleCalendarMcpConfig() {
+  return getMcpAppConfig("google-calendar");
 }

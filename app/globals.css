@@ -122,7 +122,12 @@ h1 {
   box-shadow: 0 0 0 6px rgba(255, 107, 107, 0.12);
 }
 
-.notion-strip {
+.apps-strip {
+  display: grid;
+  gap: 10px;
+}
+
+.app-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -135,21 +140,21 @@ h1 {
   backdrop-filter: blur(18px);
 }
 
-.notion-strip div {
+.app-row div {
   display: flex;
   align-items: center;
   gap: 9px;
   min-width: 0;
 }
 
-.notion-strip p {
+.app-row p {
   color: var(--soft);
   font-size: 0.9rem;
   line-height: 1.25;
 }
 
-.notion-strip a,
-.notion-strip button {
+.app-row a,
+.app-row button {
   flex: 0 0 auto;
   min-height: 34px;
   padding: 0 12px;
@@ -161,13 +166,13 @@ h1 {
   text-decoration: none;
 }
 
-.notion-strip button {
+.app-row button {
   background: rgba(255, 255, 255, 0.1);
   color: var(--soft);
 }
 
-.notion-strip a[aria-disabled="true"],
-.notion-strip button:disabled {
+.app-row a[aria-disabled="true"],
+.app-row button:disabled {
   cursor: wait;
   opacity: 0.65;
 }

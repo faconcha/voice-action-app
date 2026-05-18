@@ -4,6 +4,8 @@ export const allowedToolNames = [
   "create_notion_page",
   "append_note",
   "list_recent_ideas",
+  "create_calendar_event",
+  "list_calendar_events",
 ] as const;
 
 export type AllowedToolName = (typeof allowedToolNames)[number];
@@ -32,7 +34,29 @@ export const listRecentIdeasSchema = z.object({
   limit: z.number().int().min(1).max(20).default(5),
 });
 
+export const createCalendarEventSchema = z.object({
+  title: z.string().min(1).max(200),
+  startDateTime: z.string().min(1).max(80),
+  endDateTime: z.string().min(1).max(80),
+  timeZone: z.string().min(1).max(80).optional(),
+  calendarId: z.string().min(1).max(200).default("primary"),
+  description: z.string().max(4000).optional(),
+  location: z.string().max(500).optional(),
+  attendees: z.array(z.string().email()).max(20).default([]),
+});
+
+export const listCalendarEventsSchema = z.object({
+  startDateTime: z.string().min(1).max(80).optional(),
+  endDateTime: z.string().min(1).max(80).optional(),
+  timeZone: z.string().min(1).max(80).optional(),
+  calendarId: z.string().min(1).max(200).default("primary"),
+  query: z.string().max(300).optional(),
+  limit: z.number().int().min(1).max(20).default(10),
+});
+
 export type StructuredNote = z.infer<typeof structuredNoteSchema>;
+export type CreateCalendarEvent = z.infer<typeof createCalendarEventSchema>;
+export type ListCalendarEvents = z.infer<typeof listCalendarEventsSchema>;
 
 export type RecentIdea = {
   id: string;
@@ -130,6 +154,92 @@ export const realtimeTools = [
           minimum: 1,
           maximum: 20,
           description: "Maximum number of recent ideas to return.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    type: "function",
+    name: "create_calendar_event",
+    description:
+      "Create a Google Calendar event through the Google Calendar MCP connection. Use only when the user asks to schedule, add, or create a calendar event and provides enough date/time detail.",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        title: {
+          type: "string",
+          description: "Short event title.",
+        },
+        startDateTime: {
+          type: "string",
+          description:
+            "Event start date/time as an ISO 8601 string when possible, or the clearest natural-language date/time from the conversation.",
+        },
+        endDateTime: {
+          type: "string",
+          description:
+            "Event end date/time as an ISO 8601 string when possible, or the clearest natural-language date/time from the conversation.",
+        },
+        timeZone: {
+          type: "string",
+          description: "IANA timezone when known, such as America/Santiago.",
+        },
+        calendarId: {
+          type: "string",
+          description: "Calendar id. Use primary by default.",
+        },
+        description: {
+          type: "string",
+          description: "Optional concise event notes.",
+        },
+        location: {
+          type: "string",
+          description: "Optional location or video meeting context.",
+        },
+        attendees: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional attendee email addresses.",
+        },
+      },
+      required: ["title", "startDateTime", "endDateTime"],
+    },
+  },
+  {
+    type: "function",
+    name: "list_calendar_events",
+    description:
+      "List Google Calendar events through the Google Calendar MCP connection for a requested time range.",
+    parameters: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        startDateTime: {
+          type: "string",
+          description: "Optional range start date/time.",
+        },
+        endDateTime: {
+          type: "string",
+          description: "Optional range end date/time.",
+        },
+        timeZone: {
+          type: "string",
+          description: "IANA timezone when known.",
+        },
+        calendarId: {
+          type: "string",
+          description: "Calendar id. Use primary by default.",
+        },
+        query: {
+          type: "string",
+          description: "Optional text search query.",
+        },
+        limit: {
+          type: "number",
+          minimum: 1,
+          maximum: 20,
         },
       },
       required: [],

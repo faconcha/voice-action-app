@@ -41,6 +41,8 @@ OPENAI_API_KEY=
 OPENAI_REALTIME_MODEL=gpt-realtime
 OPENAI_REALTIME_VOICE=marin
 
+MCP_COOKIE_SECRET=
+
 NOTION_MCP_URL=https://mcp.notion.com/mcp
 NOTION_COOKIE_SECRET=
 NOTION_MCP_ACCESS_TOKEN=
@@ -50,11 +52,20 @@ NOTION_MCP_CREATE_PAGE_TOOL=
 NOTION_MCP_APPEND_NOTE_TOOL=
 NOTION_MCP_LIST_RECENT_TOOL=
 NOTION_MCP_FETCH_TOOL=
+
+GOOGLE_CALENDAR_MCP_URL=
+GOOGLE_CALENDAR_MCP_AUTH_SERVER=
+GOOGLE_CALENDAR_MCP_ACCESS_TOKEN=
+GOOGLE_CALENDAR_MCP_CLIENT_ID=
+GOOGLE_CALENDAR_MCP_CLIENT_SECRET=
+GOOGLE_CALENDAR_MCP_SCOPE=
+GOOGLE_CALENDAR_MCP_CREATE_EVENT_TOOL=
+GOOGLE_CALENDAR_MCP_LIST_EVENTS_TOOL=
 ```
 
 `OPENAI_REALTIME_MODEL` should remain `gpt-realtime` for this MVP.
 
-The optional `NOTION_MCP_*_TOOL` variables exist because MCP servers can expose different concrete tool names. The app still exposes only `create_notion_page`, `append_note`, and `list_recent_ideas` to the Realtime model.
+The optional `*_MCP_*_TOOL` variables exist because MCP servers can expose different concrete tool names. The app exposes app-level tools to the Realtime model and maps them to concrete MCP tools on the backend.
 
 ## Notion MCP Setup
 
@@ -66,17 +77,42 @@ The app connects to hosted Notion MCP through OAuth with PKCE.
    openssl rand -base64 32
    ```
 
-2. Set the value as `NOTION_COOKIE_SECRET` locally and in Vercel.
-3. Open the app and tap `Connect Notion`.
+2. Set the value as `MCP_COOKIE_SECRET` locally and in Vercel. `NOTION_COOKIE_SECRET` still works for existing Notion-only installs.
+3. Open the app and tap `Connect` next to Notion.
 4. Authorize the Notion workspace.
 5. Return to the app and confirm it says `Notion connected`.
 6. If your Notion MCP server exposes different tool names, call the app once and read the returned error. It lists available MCP tool names. Put the matching names into the `NOTION_MCP_*_TOOL` variables.
 
-The backend uses `NOTION_MCP_FETCH_TOOL` internally to inspect a target database/data-source schema before creating a page. This keeps database rows from being created with blank visible titles when the title column is named something like `Name` or `Idea` instead of `title`. The Realtime model still only sees the three app tools: `create_notion_page`, `append_note`, and `list_recent_ideas`.
+The backend uses `NOTION_MCP_FETCH_TOOL` internally to inspect a target database/data-source schema before creating a page. This keeps database rows from being created with blank visible titles when the title column is named something like `Name` or `Idea` instead of `title`.
 
 `NOTION_MCP_ACCESS_TOKEN` is optional and only kept as a fallback for non-OAuth experiments. The production app should use the Connect Notion flow.
 
 The app never calls the Notion REST API directly.
+
+## Google Calendar MCP Setup
+
+Google Calendar support expects a separate Streamable HTTP MCP server that exposes OAuth and calendar tools. Configure:
+
+- `GOOGLE_CALENDAR_MCP_URL`: the MCP endpoint, for example `https://your-calendar-mcp.example.com/mcp`
+- `GOOGLE_CALENDAR_MCP_AUTH_SERVER`: optional OAuth issuer/base URL when it differs from the MCP URL origin
+- `GOOGLE_CALENDAR_MCP_CLIENT_ID` and `GOOGLE_CALENDAR_MCP_CLIENT_SECRET`: optional static MCP OAuth client credentials when the server does not support dynamic client registration
+- `GOOGLE_CALENDAR_MCP_CREATE_EVENT_TOOL` and `GOOGLE_CALENDAR_MCP_LIST_EVENTS_TOOL`: optional concrete tool-name overrides
+
+After the variables are set locally or in Vercel, open the app and tap `Connect` next to Google Calendar. The Realtime agent can then call `create_calendar_event` and `list_calendar_events`, while the browser still only sends tool calls to `/api/mcp/tools/call`.
+
+The app does not call the Google Calendar REST API directly. Calendar actions go through the configured Google Calendar MCP server.
+
+## Testing MCP Tools Without Voice
+
+The Realtime agent and MCP execution are separate. You can test a backend tool directly after connecting the relevant app in the browser:
+
+```bash
+curl -X POST http://localhost:3000/api/mcp/tools/call \
+  -H "Content-Type: application/json" \
+  --data '{"name":"list_calendar_events","arguments":{"limit":5}}'
+```
+
+For OAuth-cookie based sessions, run the request from the browser devtools console or include the browser cookies in your curl request.
 
 ## OpenAI Realtime Setup
 

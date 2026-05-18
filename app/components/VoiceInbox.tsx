@@ -9,14 +9,22 @@ const statusCopy = {
   connecting: "Connecting",
   listening: "Listening",
   speaking: "Speaking",
-  saving: "Saving to Notion",
+  saving: "Running action",
   reconnecting: "Reconnecting",
   error: "Needs attention",
 };
 
+type McpAppStatus = {
+  id: string;
+  label: string;
+  configured: boolean;
+  oauthConfigured: boolean;
+  connected: boolean;
+};
+
 export function VoiceInbox() {
-  const [notionConnected, setNotionConnected] = useState(false);
-  const [notionLoading, setNotionLoading] = useState(true);
+  const [apps, setApps] = useState<McpAppStatus[]>([]);
+  const [appsLoading, setAppsLoading] = useState(true);
   const {
     status,
     error,
@@ -29,23 +37,26 @@ export function VoiceInbox() {
     refreshRecentItems,
   } = useRealtimeVoice();
 
-  const refreshNotionStatus = useCallback(async () => {
+  const refreshAppStatus = useCallback(async () => {
     try {
-      const response = await fetch("/api/notion/status");
-      const status = (await response.json()) as { connected?: boolean };
-      setNotionConnected(Boolean(status.connected));
+      const response = await fetch("/api/mcp/apps/status");
+      const status = (await response.json()) as { apps?: McpAppStatus[] };
+      setApps(status.apps ?? []);
     } catch {
-      setNotionConnected(false);
+      setApps([]);
     } finally {
-      setNotionLoading(false);
+      setAppsLoading(false);
     }
   }, []);
 
-  const disconnectNotion = useCallback(async () => {
-    setNotionLoading(true);
-    await fetch("/api/notion/disconnect", { method: "POST" });
-    await refreshNotionStatus();
-  }, [refreshNotionStatus]);
+  const disconnectApp = useCallback(
+    async (appId: string) => {
+      setAppsLoading(true);
+      await fetch(`/api/mcp/apps/${appId}/disconnect`, { method: "POST" });
+      await refreshAppStatus();
+    },
+    [refreshAppStatus],
+  );
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -53,12 +64,12 @@ export function VoiceInbox() {
     }
 
     const id = window.setTimeout(() => {
-      void refreshNotionStatus();
+      void refreshAppStatus();
       void refreshRecentItems();
     }, 0);
 
     return () => window.clearTimeout(id);
-  }, [refreshNotionStatus, refreshRecentItems]);
+  }, [refreshAppStatus, refreshRecentItems]);
 
   return (
     <main className="shell">
@@ -74,20 +85,38 @@ export function VoiceInbox() {
         </div>
       </section>
 
-      <section className="notion-strip" aria-label="Notion connection">
-        <div>
-          <span className={notionConnected ? "dot dot-on" : "dot"} />
-          <p>{notionConnected ? "Notion connected" : "Connect Notion to save ideas"}</p>
-        </div>
-        {notionConnected ? (
-          <button type="button" onClick={disconnectNotion} disabled={notionLoading}>
-            Disconnect
-          </button>
-        ) : (
-          <a aria-disabled={notionLoading} href="/api/notion/connect">
-            Connect Notion
-          </a>
-        )}
+      <section className="apps-strip" aria-label="MCP app connections">
+        {apps.map((app) => (
+          <div className="app-row" key={app.id}>
+            <div>
+              <span className={app.connected ? "dot dot-on" : "dot"} />
+              <p>
+                {app.connected
+                  ? `${app.label} connected`
+                  : app.configured && app.oauthConfigured
+                    ? `Connect ${app.label}`
+                    : `Configure ${app.label} MCP`}
+              </p>
+            </div>
+            {app.connected ? (
+              <button
+                type="button"
+                onClick={() => disconnectApp(app.id)}
+                disabled={appsLoading}
+              >
+                Disconnect
+              </button>
+            ) : app.configured && app.oauthConfigured ? (
+              <a aria-disabled={appsLoading} href={`/api/mcp/apps/${app.id}/connect`}>
+                Connect
+              </a>
+            ) : (
+              <button type="button" disabled>
+                Missing env
+              </button>
+            )}
+          </div>
+        ))}
       </section>
 
       <section className="mic-panel" aria-label="Voice controls">
@@ -159,7 +188,7 @@ export function VoiceInbox() {
                 </article>
               ))
             ) : (
-              <p className="empty">Saved Notion notes will appear here.</p>
+              <p className="empty">Saved notes will appear here.</p>
             )}
           </div>
         </div>

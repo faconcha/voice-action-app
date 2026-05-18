@@ -206,7 +206,7 @@ export function useRealtimeVoice() {
       setStatus("saving");
 
       try {
-        const response = await fetch("/api/tools/call", {
+        const response = await fetch("/api/mcp/tools/call", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -304,7 +304,7 @@ export function useRealtimeVoice() {
 
   const refreshRecentItems = useCallback(async () => {
     try {
-      const response = await fetch("/api/tools/call", {
+      const response = await fetch("/api/mcp/tools/call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -318,7 +318,7 @@ export function useRealtimeVoice() {
         setRecentItems(result.recentItems);
       }
     } catch {
-      // Notion may not be configured yet; the active voice session will surface errors.
+      // MCP apps may not be configured yet; the active voice session will surface errors.
     }
   }, []);
 
