@@ -19,7 +19,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
     id: app.id,
     label: app.label,
     authMode: app.authMode,
-    setupUrl: app.setupUrl,
     configured: Boolean(app.mcpUrl),
     oauthConfigured: Boolean(app.authServer),
     envAccessTokenConfigured: Boolean(app.accessToken),

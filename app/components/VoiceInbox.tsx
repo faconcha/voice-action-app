@@ -17,8 +17,7 @@ const statusCopy = {
 type McpAppStatus = {
   id: string;
   label: string;
-  authMode: "oauth" | "bearer-token";
-  setupUrl?: string;
+  authMode: "oauth";
   configured: boolean;
   oauthConfigured: boolean;
   envAccessTokenConfigured: boolean;
@@ -29,10 +28,6 @@ type McpAppStatus = {
 function appStatusCopy(app: McpAppStatus) {
   if (app.connected) {
     return `${app.label} connected`;
-  }
-
-  if (app.authMode === "bearer-token" && !app.envAccessTokenConfigured) {
-    return `Add ${app.label} API key`;
   }
 
   return app.configured && app.oauthConfigured
@@ -122,13 +117,9 @@ export function VoiceInbox() {
               >
                 Disconnect
               </button>
-            ) : app.authMode === "oauth" && app.configured && app.oauthConfigured ? (
+            ) : app.configured && app.oauthConfigured ? (
               <a aria-disabled={appsLoading} href={`/api/mcp/apps/${app.id}/connect`}>
                 Connect
-              </a>
-            ) : app.setupUrl ? (
-              <a href={app.setupUrl} rel="noreferrer" target="_blank">
-                Get key
               </a>
             ) : (
               <button type="button" disabled>
