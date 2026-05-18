@@ -53,7 +53,7 @@ NOTION_MCP_APPEND_NOTE_TOOL=
 NOTION_MCP_LIST_RECENT_TOOL=
 NOTION_MCP_FETCH_TOOL=
 
-GOOGLE_CALENDAR_MCP_URL=
+GOOGLE_CALENDAR_MCP_URL=https://gcal.mintmcp.com/mcp
 GOOGLE_CALENDAR_MCP_AUTH_SERVER=
 GOOGLE_CALENDAR_MCP_CLIENT_ID=
 GOOGLE_CALENDAR_MCP_CLIENT_SECRET=
@@ -92,12 +92,12 @@ The app never calls the Notion REST API directly.
 
 Google Calendar support uses the same pattern as Notion: the app connects to a Google Calendar MCP server over Streamable HTTP, and OAuth happens through the MCP server.
 
-- `GOOGLE_CALENDAR_MCP_URL`: required MCP endpoint, for example `https://your-calendar-mcp.example.com/mcp`
+- `GOOGLE_CALENDAR_MCP_URL`: MCP endpoint, defaults to `https://gcal.mintmcp.com/mcp`
 - `GOOGLE_CALENDAR_MCP_AUTH_SERVER`: optional OAuth issuer/base URL when it differs from the MCP URL origin
 - `GOOGLE_CALENDAR_MCP_CLIENT_ID` and `GOOGLE_CALENDAR_MCP_CLIENT_SECRET`: optional static MCP OAuth client credentials when the MCP server does not support dynamic client registration
 - `GOOGLE_CALENDAR_MCP_CREATE_EVENT_TOOL` and `GOOGLE_CALENDAR_MCP_LIST_EVENTS_TOOL`: optional concrete tool-name overrides
 
-After those variables are set locally or in Vercel, open the app and tap `Connect` next to Google Calendar. The Realtime agent can then call `create_calendar_event` and `list_calendar_events`, while the browser still only sends tool calls to `/api/mcp/tools/call`.
+With the default MintMCP Google Calendar endpoint, open the app and tap `Connect` next to Google Calendar. The Realtime agent can then call `create_calendar_event` and `list_calendar_events`, while the browser still only sends tool calls to `/api/mcp/tools/call`.
 
 The app does not call the Google Calendar REST API directly. Calendar actions go through the configured Google Calendar MCP server.
 

@@ -77,7 +77,9 @@ export function getMcpAppConfig(appId: McpAppId): McpAppConfig {
     };
   }
 
-  const mcpUrl = process.env.GOOGLE_CALENDAR_MCP_URL ?? "";
+  const mcpUrl =
+    process.env.GOOGLE_CALENDAR_MCP_URL ??
+    "https://gcal.mintmcp.com/mcp";
   const authServer =
     process.env.GOOGLE_CALENDAR_MCP_AUTH_SERVER ??
     (mcpUrl ? originFromUrl(mcpUrl) : "");
@@ -119,6 +121,8 @@ export function getMcpAppConfig(appId: McpAppId): McpAppConfig {
         "list_calendar_events",
         "search_events",
         "search-events",
+        "get_calendar_events",
+        "get-calendar-events",
       ].filter((name): name is string => Boolean(name)),
     },
   };
