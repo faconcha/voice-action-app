@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { VOICE_INBOX_SYSTEM_PROMPT } from "@/app/lib/realtime/prompt";
-import { realtimeTools, type RecentIdea } from "@/app/lib/shared/tools";
+import { buildVoiceInboxSystemPrompt } from "@/app/lib/realtime/prompt";
+import { realtimeTools } from "@/app/lib/realtime/tools";
+import type { RecentIdea } from "@/app/lib/shared/tools";
 
 type ConnectionStatus =
   | "idle"
@@ -381,13 +382,17 @@ export function useRealtimeVoice() {
       stream.getAudioTracks().forEach((track) => peer.addTrack(track, stream));
 
       channel.onopen = () => {
+        const timeZone =
+          Intl.DateTimeFormat().resolvedOptions().timeZone ||
+          "America/Santiago";
+
         setStatus("listening");
         sendRealtimeEvent({
           type: "session.update",
           session: {
             type: "realtime",
             model: "gpt-realtime",
-            instructions: VOICE_INBOX_SYSTEM_PROMPT,
+            instructions: buildVoiceInboxSystemPrompt({ timeZone }),
             tools: realtimeTools,
             tool_choice: "auto",
           },

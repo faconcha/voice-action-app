@@ -1,6 +1,6 @@
 # Voice Action App
 
-Voice Action App is a mobile-first PWA for continuous realtime voice conversation with an AI thought partner. It uses OpenAI Realtime WebRTC for speech-to-speech interaction and routes structured capture actions through a Notion MCP server.
+Voice Action App is a mobile-first PWA for continuous realtime voice conversation with an AI thought partner. It uses OpenAI Realtime WebRTC for speech-to-speech interaction and routes structured actions through MCP servers for Notion and Google Calendar.
 
 This is intentionally not a chatbot. The UI is one large voice control, a live status indicator, transcript context, and recent saved Notion items.
 
@@ -10,18 +10,34 @@ This is intentionally not a chatbot. The UI is one large voice control, a live s
 Mobile PWA
   -> OpenAI Realtime API over WebRTC
   -> Next.js API routes
-  -> Notion hosted MCP server
-  -> Notion workspace
+  -> Hosted MCP servers
+  -> Notion workspace and Google Calendar
 ```
 
-The browser owns microphone streaming, remote audio playback, interruption, and Realtime DataChannel events. The backend only creates a short-lived Realtime client secret and proxies the three allowed tool calls to Notion MCP.
+The browser owns microphone streaming, remote audio playback, interruption, and Realtime DataChannel events. The backend creates a short-lived Realtime client secret and dispatches allowed tool calls to app-specific MCP adapters.
+
+## Implementation Notes
+
+Realtime agent logic is intentionally separate from MCP execution logic:
+
+- `app/api/realtime/session/route.ts` creates the ephemeral OpenAI Realtime session.
+- `app/lib/realtime/useRealtimeVoice.ts` manages WebRTC, audio, transcript state, DataChannel events, and function-call outputs.
+- `app/lib/realtime/tools.ts` contains the model-visible tool declarations sent to the Realtime session.
+- `app/lib/shared/tools.ts` contains stable tool names and Zod schemas used to validate backend tool inputs.
+- `app/api/mcp/tools/call/route.ts` is the only browser-facing MCP tool execution endpoint.
+- `app/lib/server/tool-dispatcher.ts` routes validated app-level tools to the correct MCP adapter.
+- `app/lib/server/notion-mcp.ts` and `app/lib/server/google-calendar-mcp.ts` translate app-level tool inputs into concrete MCP tool payloads.
+- `app/lib/server/mcp-client.ts` and `app/lib/server/notion-mcp-client.ts` own Streamable HTTP MCP client calls.
+- `app/lib/server/mcp-oauth.ts` owns OAuth discovery, dynamic client registration, PKCE, encrypted cookies, token refresh, and env-token fallback.
+
+The stream agent model is `gpt-realtime` by default, configured by `OPENAI_REALTIME_MODEL`. The voice is `marin` by default, configured by `OPENAI_REALTIME_VOICE`. Input audio transcription uses `gpt-4o-mini-transcribe`.
 
 ## Requirements
 
 - Node.js 20.9 or newer for Next.js 16
 - An OpenAI API key with Realtime access
-- A pre-authorized Notion MCP access token for the single workspace/user
-- A Notion parent page or workspace destination configured for captures
+- MCP OAuth connections from the browser, or pre-authorized MCP access tokens for local smoke tests
+- A Notion parent page or workspace destination configured for captures, such as `Sandbox de Ideas`
 
 ## Local Setup
 
@@ -60,6 +76,9 @@ GOOGLE_CALENDAR_MCP_CLIENT_SECRET=
 GOOGLE_CALENDAR_MCP_SCOPE=
 GOOGLE_CALENDAR_MCP_CREATE_EVENT_TOOL=
 GOOGLE_CALENDAR_MCP_LIST_EVENTS_TOOL=
+GOOGLE_CALENDAR_MCP_ACCESS_TOKEN=
+
+APP_DEFAULT_TIMEZONE=America/Santiago
 ```
 
 `OPENAI_REALTIME_MODEL` should remain `gpt-realtime` for this MVP.
@@ -103,7 +122,15 @@ The app does not call the Google Calendar REST API directly. Calendar actions go
 
 ## Testing MCP Tools Without Voice
 
-The Realtime agent and MCP execution are separate. You can test a backend tool directly after connecting the relevant app in the browser:
+The Realtime agent and MCP execution are separate. The fastest terminal smoke test is:
+
+```bash
+npm run mcp:smoke
+```
+
+That script writes `local_example/mcp-test-report.txt`. It performs real OAuth metadata discovery and dynamic client registration for Notion and Google Calendar. If `NOTION_MCP_ACCESS_TOKEN` and/or `GOOGLE_CALENDAR_MCP_ACCESS_TOKEN` are present, it also calls the actual MCP tools: it tries to create a Notion smoke-test page in `Sandbox de Ideas`, list calendar events, and create a Google Calendar smoke-test event.
+
+You can also test a backend tool directly after connecting the relevant app in the browser:
 
 ```bash
 curl -X POST http://localhost:3000/api/mcp/tools/call \
@@ -112,6 +139,8 @@ curl -X POST http://localhost:3000/api/mcp/tools/call \
 ```
 
 For OAuth-cookie based sessions, run the request from the browser devtools console or include the browser cookies in your curl request.
+
+Useful direct tool names are `create_notion_page`, `append_note`, `list_recent_ideas`, `create_calendar_event`, and `list_calendar_events`.
 
 ## OpenAI Realtime Setup
 
@@ -172,6 +201,7 @@ No database is required. The production MVP is single-user: Notion access is pro
 npm run dev
 npm run typecheck
 npm run lint
+npm run mcp:smoke
 npm run build
 npm run deploy
 ```

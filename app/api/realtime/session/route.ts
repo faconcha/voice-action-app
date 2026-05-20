@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { VOICE_INBOX_SYSTEM_PROMPT } from "@/app/lib/realtime/prompt";
+import { buildVoiceInboxSystemPrompt } from "@/app/lib/realtime/prompt";
+import { realtimeTools } from "@/app/lib/realtime/tools";
 import { getRealtimeConfig } from "@/app/lib/server/env";
-import { realtimeTools } from "@/app/lib/shared/tools";
 
 export const runtime = "nodejs";
 
 export async function POST() {
   try {
     const config = getRealtimeConfig();
+    const instructions = buildVoiceInboxSystemPrompt({
+      timeZone: process.env.APP_DEFAULT_TIMEZONE ?? "America/Santiago",
+    });
     const response = await fetch(
       "https://api.openai.com/v1/realtime/client_secrets",
       {
@@ -21,7 +24,7 @@ export async function POST() {
           session: {
             type: "realtime",
             model: config.model,
-            instructions: VOICE_INBOX_SYSTEM_PROMPT,
+            instructions,
             audio: {
               input: {
                 turn_detection: {

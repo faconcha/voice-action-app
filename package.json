@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "mcp:smoke": "tsx --env-file=.env.local local_example/test-mcps.ts",
     "deploy": "npx --yes vercel@latest --prod"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.2",
     "eslint-config-next": "16.2.6",
+    "tsx": "^4.22.3",
     "typescript": "5.9.3"
   }
 }

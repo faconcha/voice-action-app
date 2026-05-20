@@ -93,7 +93,7 @@ export function getMcpAppConfig(appId: McpAppId): McpAppConfig {
     cookieKey: "google_calendar",
     mcpUrl,
     authServer,
-    accessToken: undefined,
+    accessToken: process.env.GOOGLE_CALENDAR_MCP_ACCESS_TOKEN,
     clientId: process.env.GOOGLE_CALENDAR_MCP_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CALENDAR_MCP_CLIENT_SECRET,
     scope: process.env.GOOGLE_CALENDAR_MCP_SCOPE,
