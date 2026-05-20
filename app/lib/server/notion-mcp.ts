@@ -26,23 +26,6 @@ type CreateNote = ReturnType<typeof createNotionPageSchema.parse>;
 type AppendNote = ReturnType<typeof appendNoteSchema.parse>;
 type ParsedNote = CreateNote | AppendNote;
 
-function shouldKeepRawText(
-  note: { rawText?: string; title?: string; summary?: string },
-  description?: string,
-) {
-  const raw = note.rawText?.trim();
-
-  if (!raw) {
-    return false;
-  }
-
-  if (!description) {
-    return false;
-  }
-
-  return raw !== description && raw !== note.title?.trim();
-}
-
 function noteToMarkdown(note: {
   rawText?: string;
   title?: string;
@@ -61,12 +44,13 @@ function noteToMarkdown(note: {
     description !== original.trim() &&
     description.length > 8;
 
-  return [
-    hasUsefulDescription ? description : "",
-    shouldKeepRawText(note, description) ? note.rawText?.trim() : "",
-  ]
-    .filter((part) => part !== "")
-    .join("\n\n");
+  if (hasUsefulDescription) {
+    return description;
+  }
+
+  const cleanOriginal = original.trim();
+
+  return cleanOriginal !== title ? cleanOriginal : "";
 }
 
 function noteToAppendMarkdown(note: {
