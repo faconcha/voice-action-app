@@ -43,6 +43,82 @@ button {
   cursor: pointer;
 }
 
+input {
+  color: inherit;
+  font: inherit;
+}
+
+.access-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 20px;
+}
+
+.access-panel {
+  width: min(100%, 390px);
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(18, 20, 29, 0.82);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.access-panel h1 {
+  max-width: none;
+  font-size: 2rem;
+}
+
+.access-copy {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.access-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.access-form label {
+  color: var(--soft);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.access-form input[type="password"] {
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0 12px;
+  outline: none;
+}
+
+.access-form input[type="password"]:focus {
+  border-color: rgba(69, 212, 131, 0.74);
+  box-shadow: 0 0 0 4px rgba(69, 212, 131, 0.12);
+}
+
+.access-form button {
+  min-height: 44px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #07100c;
+  font-weight: 800;
+}
+
+.access-error {
+  margin-top: 12px;
+  color: #ffb2b2;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .shell {
   width: min(100%, 980px);
   min-height: 100dvh;

@@ -54,6 +54,8 @@ Open `http://localhost:3000` on desktop or on your mobile device through your lo
 
 ```bash
 OPENAI_API_KEY=
+APP_ACCESS_PASSWORD=
+APP_ACCESS_SECRET=
 OPENAI_REALTIME_MODEL=gpt-realtime
 OPENAI_REALTIME_VOICE=marin
 
@@ -82,6 +84,21 @@ APP_DEFAULT_TIMEZONE=America/Santiago
 ```
 
 `OPENAI_REALTIME_MODEL` should remain `gpt-realtime` for this MVP.
+
+## Private Access Gate
+
+The deployed app is protected by a small app-level password gate so a public URL
+cannot mint OpenAI Realtime sessions for anonymous visitors.
+
+Set this in Vercel before sharing or recording the production URL:
+
+```bash
+APP_ACCESS_PASSWORD=
+```
+
+`APP_ACCESS_SECRET` is optional. If omitted, the password is also used to sign
+the private access cookie. In production, the app fails closed when
+`APP_ACCESS_PASSWORD` is missing.
 
 The optional `*_MCP_*_TOOL` variables exist because MCP servers can expose different concrete tool names. The app exposes app-level tools to the Realtime model and maps them to concrete MCP tools on the backend.
 
